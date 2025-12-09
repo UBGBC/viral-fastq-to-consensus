@@ -13,9 +13,8 @@ sample_ids = list(df.index)
 df.index = sample_ids
 
 def get_pair_gz(sample_id):
-    r1 = str(df.loc[str(sample_id), "ForwardFastqGZ"])
-    r2 = str(df.loc[str(sample_id), "ReverseFastqGZ"])
-    return (r1, r2)
+    d = config["raw_fastq_gz_dir"]
+    return tuple(os.path.join(d, df.loc[str(sample_id), x]) for x in ("ForwardFastqGZ","ReverseFastqGZ"))
 
 def get_forward_primer(s): return df.loc[s]["Adapter_1"]
 def get_reverse_primer(s): return df.loc[s]["Adapter_2"]
@@ -76,7 +75,7 @@ rule fastqc_pre:
         html2 = config["dir_names"]["qc_pre_dir"] + "/{sample_id}_R2_fastqc.html",
         zip2  = config["dir_names"]["qc_pre_dir"] + "/{sample_id}_R2_fastqc.zip"
     params: outdir=config["dir_names"]["qc_pre_dir"]
-    threads: 2
+    threads: 4
     shell: "fastqc -t {threads} -o {params.outdir} {input.r1} {input.r2}"
 
 rule fastq_screen_pre:
@@ -84,12 +83,14 @@ rule fastq_screen_pre:
         r1=lambda wc: get_pair_gz(wc.sample_id)[0],
         r2=lambda wc: get_pair_gz(wc.sample_id)[1]
     output:
-        png1 = config["dir_names"]["qc_pre_dir"] + "/{sample_id}_R1_screen.png",
-        png2 = config["dir_names"]["qc_pre_dir"] + "/{sample_id}_R2_screen.png"
+        html1 = config["dir_names"]["qc_pre_dir"] + "/{sample_id}_R1_screen.html",
+        txt1  = config["dir_names"]["qc_pre_dir"] + "/{sample_id}_R1_screen.txt",
+        html2 = config["dir_names"]["qc_pre_dir"] + "/{sample_id}_R2_screen.html",
+        txt2  = config["dir_names"]["qc_pre_dir"] + "/{sample_id}_R2_screen.txt"
     params:
         conf=config["params"]["fastq_screen"]["conf"],
         outdir=config["dir_names"]["qc_pre_dir"]
-    threads: 2
+    threads: 4
     shell: r"""
         fastq_screen --aligner bowtie2 --threads {threads} --conf {params.conf} --outdir {params.outdir} {input.r1} {input.r2}
         [[ -f {params.outdir}/{wildcards.sample_id}_R1_screen.png ]] && ln -sf {params.outdir}/{wildcards.sample_id}_R1_screen.png {output.png1} || touch {output.png1}
@@ -107,7 +108,7 @@ rule trim:
         trimmed_read1=config["dir_names"]["trimmed_dir"] + "/{sample_id}.trimmed.R1.fastq.gz",
         trimmed_read2=config["dir_names"]["trimmed_dir"] + "/{sample_id}.trimmed.R2.fastq.gz",
         trimmed_stats=config["dir_names"]["trimmed_dir"] + "/{sample_id}.trimmed.stats"
-    resources: time_min=360, mem_mb=2000, cpus=4
+    resources: time_min=360, mem_mb=16000, cpus=8
     version: config["tool_version"]["cutadapt"]
     params:
         adapter1=lambda wc: get_forward_primer(wc.sample_id),
@@ -128,7 +129,7 @@ rule fastqc_post:
         html2=config["dir_names"]["qc_post_dir"] + "/{sample_id}.trimmed_R2_fastqc.html",
         zip2 =config["dir_names"]["qc_post_dir"] + "/{sample_id}.trimmed_R2_fastqc.zip"
     params: outdir=config["dir_names"]["qc_post_dir"]
-    threads: 2
+    threads: 4
     shell: "fastqc -t {threads} -o {params.outdir} {input.r1} {input.r2}"
 
 rule fastq_screen_post:
@@ -136,12 +137,14 @@ rule fastq_screen_post:
         r1=rules.trim.output.trimmed_read1,
         r2=rules.trim.output.trimmed_read2
     output:
-        png1=config["dir_names"]["qc_post_dir"] + "/{sample_id}.trimmed_R1_screen.png",
-        png2=config["dir_names"]["qc_post_dir"] + "/{sample_id}.trimmed_R2_screen.png"
+        html1=config["dir_names"]["qc_post_dir"] + "/{sample_id}.trimmed_R1_screen.html",
+        txt1 =config["dir_names"]["qc_post_dir"] + "/{sample_id}.trimmed_R1_screen.txt",
+        html2=config["dir_names"]["qc_post_dir"] + "/{sample_id}.trimmed_R2_screen.html",
+        txt2 =config["dir_names"]["qc_post_dir"] + "/{sample_id}.trimmed_R2_screen.txt"
     params:
         conf=config["params"]["fastq_screen"]["conf"],
         outdir=config["dir_names"]["qc_post_dir"]
-    threads: 2
+    threads: 4
     shell: r"""
         fastq_screen --aligner bowtie2 --threads {threads} --conf {params.conf} --outdir {params.outdir} {input.r1} {input.r2}
         [[ -f {params.outdir}/{wildcards.sample_id}.trimmed_R1_screen.png ]] && ln -sf {params.outdir}/{wildcards.sample_id}.trimmed_R1_screen.png {output.png1} || touch {output.png1}
@@ -180,7 +183,7 @@ rule build_bwa_index:
         lambda wc: bwa_index_files(chosen_prefix(wc.sample_id)) if aligner()=="bwa" else [temp("ignore_bwa_index")]
     params:
         prefix=lambda wc: chosen_prefix(wc.sample_id)
-    threads: 2
+    threads: 8
     run:
         if aligner()!="bwa":
             shell("touch {output[0]}")
@@ -194,7 +197,7 @@ rule build_bowtie2_index:
         lambda wc: bowtie2_index_files(chosen_prefix(wc.sample_id)) if aligner()=="bowtie2" else [temp("ignore_bt2_index")]
     params:
         prefix=lambda wc: chosen_prefix(wc.sample_id)
-    threads: 2
+    threads: 8
     run:
         if aligner()!="bowtie2":
             shell("touch {output[0]}")
@@ -241,7 +244,7 @@ rule ivar_filter:
         primer_bed = config["params"]["ivar"]["primer_bed"]
     output:
         filtered_bam_file = config["dir_names"]["filtered_dir"] + "/{sample_id}.filtered.bam"
-    resources: time_min=360, mem_mb=20000, cpus=6
+    resources: time_min=360, mem_mb=20000, cpus=8
     shell: r"""
         #ivar trim -i {input.sorted_bam} -b {input.primer_bed} -p {output.filtered_bam_file}
         ivar trim -e -k -i {input.sorted_bam} -b {input.primer_bed} -p {output.filtered_bam_file}
@@ -250,7 +253,7 @@ rule ivar_filter:
 rule second_sort:
     input:  filtered_bam = rules.ivar_filter.output.filtered_bam_file
     output: second_sorted_bam_file = config["dir_names"]["filtered_dir"] + "/{sample_id}.filtered.sorted.bam"
-    resources: time_min=360, mem_mb=20000, cpus=1
+    resources: time_min=360, mem_mb=20000, cpus=8
     shell:  "samtools view -hb {input.filtered_bam} | samtools sort -T {input.filtered_bam}.tmp -o {output.second_sorted_bam_file}"
 
 rule pileup:
@@ -262,7 +265,7 @@ rule pileup:
         depth = config["params"]["mpileup"]["depth"],
         min_base_qual = config["params"]["varscan"]["snp_qual_threshold"],
         reference=lambda wc: get_reference_fasta(wc.sample_id)
-    resources: time_min=360, mem_mb=10000, cpus=1
+    resources: time_min=360, mem_mb=24000, cpus=8
     shell: r"""
         bcftools mpileup -A -Q {params.min_base_qual} --max-depth 5000000 -L 5000000 \
             -f {params.reference} {input.second_sorted_bam} > {output.pileup}
@@ -279,7 +282,7 @@ rule call_snps:
         min_base_qual = config["params"]["varscan"]["snp_qual_threshold"],
         min_base_cov = config["params"]["varscan"]["min_cov"],
         reference=lambda wc: get_reference_fasta(wc.sample_id)
-    resources: time_min=360, mem_mb=10000, cpus=1
+    resources: time_min=360, mem_mb=24000, cpus=8
     shell: r"""
         bcftools mpileup -A -a "INFO/AD,INFO/ADF,INFO/ADR,FORMAT/ADF,FORMAT/ADR,FORMAT/SP" \
             -Q {params.min_base_qual} -f {params.reference} -L 5000000 --max-depth 5000000 \
@@ -292,7 +295,7 @@ rule call_snps:
 rule call_consensus_snps:
     input:  vcf = rules.call_snps.output.vcf
     output: consensus_vcf = config["dir_names"]["varscan_dir"] + "/{sample_id}.consensus.vcf.gz"
-    resources: time_min=360, mem_mb=10000, cpus=1
+    resources: time_min=360, mem_mb=10000, cpus=4
     shell:  "bcftools filter --exclude '(AD[0])/ (AD[0] + AD[1]) >= 0.5' {input.vcf} -Oz -o {output.consensus_vcf}"
 
 rule index_bcf:
@@ -302,7 +305,7 @@ rule index_bcf:
     output:
         index = config["dir_names"]["varscan_dir"]+"/{sample_id}.vcf.gz.tbi",
         consensus_index = config["dir_names"]["varscan_dir"]+"/{sample_id}.consensus.vcf.gz.tbi"
-    resources: time_min=360, mem_mb=10000, cpus=1
+    resources: time_min=360, mem_mb=10000, cpus=4
     shell: "tabix -f {input.vcf} > {output.index}; tabix -f {input.consensus_vcf} > {output.consensus_index};"
 
 rule bedtools_mask:
@@ -311,7 +314,7 @@ rule bedtools_mask:
         vcf = rules.call_snps.output.vcf
     output:
         bed_file = config["dir_names"]["varscan_dir"]+"/{sample_id}.bed"
-    resources: time_min=360, mem_mb=10000, cpus=1
+    resources: time_min=360, mem_mb=10000, cpus=4
     shell: r"""
         bedtools genomecov -ibam {input.second_sorted_bam} -bga \
         | awk '{{if($4 < 50) print $0}}' \
@@ -326,7 +329,7 @@ rule mask_consensus:
         bed_file = rules.bedtools_mask.output.bed_file
     output:
         consensus_genome = config["dir_names"]["consensus_dir"] + "/{sample_id}.masked_consensus.fasta"
-    resources: time_min=360, mem_mb=10000, cpus=1
+    resources: time_min=360, mem_mb=10000, cpus=4
     params:
         reference=lambda wc: get_reference_fasta(wc.sample_id),
         year=lambda wc: get_year(wc.sample_id),
@@ -344,7 +347,7 @@ rule multiqc:
     params: 
         outdir=config["dir_names"]["multiqc_dir"],
         multiqc_run_dir=config["dir_names"]["results_dir"]
-    threads: 2
+    threads: 4
     shell: """
     # move to main results directory to gather all reports
     cd {params.multiqc_run_dir}
