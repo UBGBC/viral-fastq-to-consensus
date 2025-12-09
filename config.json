@@ -1,52 +1,49 @@
 {
-    "raw_fastq_gz_dir": "/projects/academic/gbcstaff/Core_Projects/COVID-19/SURTEES-COVID-PE300/fastq/",
-    "meta_file": "metadata.txt",
-    "tool_version":
-    {
-        "pear": "0.9.6",
-        "fastx": "0.0.13",
-        "cutadapt": "3.5",
-        "samtools": "1.7",
-        "bowtie2": "2.4.1",
-        "bwa": "0.1.17",
-        "ivar":"1.2.2"
-    },
-    "file_names":
-    {
-        "mkdir_done": "mkdir.done",
-        "consensus_done": "consensus.done",
-    },
-    "dir_names":
-    {
-        "trimmed_dir": "outputs/trimmed",
-        "mapped_dir": "outputs/mapping",
-        "sorted_dir": "outputs/sorted",
-        "mpileup_dir": "outputs/pileups",
-        "varscan_dir": "outputs/varscan",
-        "consensus_dir": "outputs/consensus",
-        "filtered_dir": "outputs/filtered"
-    },
-    "params":
-    {
-        "bwa":
-            {
-            "threads": "4",
-            "all": "-a",
-            "bwa_reference":"tools/reference/bt2-indexes/nCoV-2019.fasta"
-            },
-        "mpileup":
-            {
-            "depth": "0"
-            },
-        "ivar":
-            {
-            "primer_bed":"tools/reference/VarSkip_2e.sort.bed"
-            },
-        "varscan":
-            {
-            "min_cov": "50",
-            "snp_qual_threshold": "30",
-            "snp_frequency": "0.33"
-            }
-    }
+  "meta_file": "samples.tsv",
+
+  "dir_names": {
+    "qc_pre_dir": "qc/pre",
+    "qc_post_dir": "qc/post",
+    "trimmed_dir": "trimmed",
+    "dehost_dir": "dehost",
+    "mapped_dir": "mapped",
+    "filtered_dir": "filtered",
+    "mpileup_dir": "mpileup",
+    "varscan_dir": "varscan",
+    "consensus_dir": "consensus",
+    "multiqc_dir": "multiqc"
+  },
+
+  "file_names": {
+    "mkdir_done": ".dirs_ready",
+    "index_ready": ".index_ready"
+  },
+
+  "tool_version": {
+    "cutadapt": "4.9",
+    "fastqc": "0.11.9",
+    "fastq_screen": "0.14.1",
+    "kraken2": "2.1.2",
+    "bwa": "0.7.17",
+    "bowtie2": "2.5.4",
+    "samtools": "1.16.1 ",
+    "bcftools": "1.14",
+    "bedtools": "2.30.0",
+    "ivar": "1.2.2",
+    "tabix": "1.21",
+    "multiqc": "1.31"
+  },
+
+  "params": {
+    "aligner": "bowtie2",                    // "bwa" or "bowtie2"
+    "bwa":     { "threads": 8 },
+    "bowtie2": { "threads": 8 },
+
+    "kraken2": { "db": "/path/to/kraken2_host_db", "threads": 8 },
+    "fastq_screen": { "conf": "/path/to/fastq_screen.conf" },
+
+    "ivar": { "primer_bed": "primers.bed" },
+    "mpileup": { "depth": 5000000 },
+    "varscan": { "snp_qual_threshold": 20, "min_cov": 10 }
+  }
 }
