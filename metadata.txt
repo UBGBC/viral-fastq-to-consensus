@@ -1,5 +1,2 @@
-#SampleID	Adapter_1	Adapter_2	ForwardFastqGZ	ReverseFastqGZ  Date  Year  
-UB-KHL-00001	AGATCGGAAGAGCACACGTCTGAACTCCAGTCA	AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT	SRR11410528_1.fastq	SRR11410528_2.fastq YYYY-MM-DD  YYYY
-
-
-
+#SampleID	Adapter_1	Adapter_2	ForwardFastqGZ	ReverseFastqGZ	Date	Year    Genome  Index   GFF
+0601001CF   AGATCGGAAGAGCACACGTCTGAACTCCAGTCA   AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT   3396_Zepto/0601001CF_S11_L001_R1_001.fastq.gz   3396_Zepto/0601001CF_S11_L001_R2_001.fastq.gz   2025-12-09  2025    viral_references/hiv1_IIIB_UK_KJ925006.1_complete_genome.fasta.gz   viral_references/hiv1_IIIB_UK_KJ925006.1    viral_references/hiv1_IIIB_UK_KJ925006.1.gff
