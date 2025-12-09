@@ -13,8 +13,9 @@ sample_ids = list(df.index)
 df.index = sample_ids
 
 def get_pair_gz(sample_id):
-    d = config["raw_fastq_gz_dir"]
-    return tuple(os.path.join(d, df.loc[str(sample_id), x]) for x in ("ForwardFastqGZ","ReverseFastqGZ"))
+    r1 = str(df.loc[str(sample_id), "ForwardFastqGZ"])
+    r2 = str(df.loc[str(sample_id), "ReverseFastqGZ"])
+    return (r1, r2)
 
 def get_forward_primer(s): return df.loc[s]["Adapter_1"]
 def get_reverse_primer(s): return df.loc[s]["Adapter_2"]
